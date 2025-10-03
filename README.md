@@ -40,24 +40,23 @@ The tests use a mock Chainlink price feed to simulate different price scenarios 
 
 This project has two main components to deploy:
 
-1.  **`TwapResponse.sol`**: This contract is deployed using Foundry. A deployment script is provided in `scripts/DeployTwapResponse.s.sol`.
+1.  **`TwapResponse.sol`**: This contract is deployed using Foundry. A deployment script is provided in `scripts/DeployTwapResponse.s.sol`. You can deploy it by running:
 
-2.  **`TwapOracleTrap.sol`**: This contract is deployed using the Drosera CLI. The `drosera.toml` file needs to be updated with the path to this trap, the address of the deployed `TwapResponse` contract, and the function signature of the response function.
+    ```bash
+    forge script scripts/DeployTwapResponse.s.sol --rpc-url <your_rpc_url> --private-key <your_private_key> --broadcast
+    ```
 
-After deploying the `TwapResponse` contract, you would update your `drosera.toml` file like this:
+2.  **`TwapOracleTrap.sol`**: This contract is deployed using the Drosera CLI. Before deploying the trap, you need to update the `drosera.toml` file with the address of the deployed `TwapResponse` contract and the function signature of the response function.
 
-```toml
-response_contract = "<address_of_TwapResponse_contract>"
-response_function = "priceDeviation(uint256,uint256)"
-path = "src/TwapOracleTrap.sol"
-```
+    After deploying the `TwapResponse` contract, you will get an address. You need to add the following lines to your `drosera.toml` file under the `[traps.twap_oracle_trap]` section:
 
-Then, you can deploy the trap using the Drosera CLI:
+    ```toml
+    response_contract = "<address_of_TwapResponse_contract>"
+    response_function = "triggerTwap(uint256, uint256, uint256)"
+    ```
 
-```bash
-DROSERA_PRIVATE_KEY=0x... drosera apply
-```
+    Then, you can deploy the trap using the Drosera CLI:
 
-## My Development Journey
-
-I started with the Drosera Foundry template and cleaned it up to start fresh. I then built the `TwapOracleTrap` and its corresponding `TwapResponse` contract. I had to make the trap testable by using an internal setter for the price feed, which is only used in the test environment. I also had to debug some issues with dependencies and compiler errors. After a few iterations, I was able to get the tests to pass and the project into a good state.
+    ```bash
+    DROSERA_PRIVATE_KEY=0x... drosera apply
+    ```
