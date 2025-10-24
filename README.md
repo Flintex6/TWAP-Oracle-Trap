@@ -52,8 +52,10 @@ This project has two main components to deploy:
 
     ```toml
     response_contract = "<address_of_TwapResponse_contract>"
-    response_function = "triggerTwap(uint256, uint256, uint256)"
+    response_function = "priceDeviation(uint256,uint256)"
+    whitelist = ["<your_whitelisted_address>"]
     ```
+    If your trap is private (`private_trap = true`), you will also need to update the `whitelist` with the addresses of the operators that are allowed to run your trap.
 
     Then, you can deploy the trap using the Drosera CLI:
 
