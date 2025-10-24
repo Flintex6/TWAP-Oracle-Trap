@@ -6,30 +6,36 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 
 struct CollectOutput {
     int256 price;
+    uint256 timestamp;
+    uint256 collectedAt;
 }
 
 contract TwapOracleTrap is ITrap {
     // @notice The Chainlink price feed to monitor.
-    // @dev This is a placeholder and should be replaced with a real price feed address on Hoodi.
-    AggregatorV3Interface internal priceFeed = AggregatorV3Interface(0x5f4ec3dF9CBD43714fe274045f36413d85b6083f); // ETH/USD
-
-    function _setPriceFeed(address newPriceFeed) internal {
-        priceFeed = AggregatorV3Interface(newPriceFeed);
-    }
+    AggregatorV3Interface internal constant PRICE_FEED = AggregatorV3Interface(0x5f4ec3dF9CBD43714fe274045f36413d85b6083f); // ETH/USD
 
     // @notice The percentage deviation from the TWAP that will trigger a response.
     // @dev 100 = 1%
     uint256 internal constant DEVIATION_THRESHOLD = 100; // 1%
 
-    function collect() public view returns (bytes memory) {
-        (, int256 price, , , ) = priceFeed.latestRoundData();
-        return abi.encode(CollectOutput({price: price}));
+    // @notice The maximum age of a price feed sample in seconds.
+    uint256 internal constant STALENESS_THRESHOLD = 3600; // 1 hour
+
+    function collect() external view override returns (bytes memory) {
+        (, int256 price, , uint256 timestamp, ) = PRICE_FEED.latestRoundData();
+        return abi.encode(CollectOutput({price: price, timestamp: timestamp, collectedAt: block.timestamp}));
     }
 
     function shouldRespond(
-        bytes[] memory data
-    ) public pure returns (bool, bytes memory) {
+        bytes[] calldata data
+    ) external pure override returns (bool, bytes memory) {
         if (data.length < 2) {
+            return (false, "");
+        }
+
+        CollectOutput memory latestOutput = abi.decode(data[0], (CollectOutput));
+        
+        if (latestOutput.collectedAt - latestOutput.timestamp > STALENESS_THRESHOLD) {
             return (false, "");
         }
 
@@ -40,11 +46,6 @@ contract TwapOracleTrap is ITrap {
         }
 
         int256 twap = totalPrice / int256(data.length);
-        
-        CollectOutput memory latestOutput = abi.decode(
-            data[data.length - 1],
-            (CollectOutput)
-        );
         int256 latestPrice = latestOutput.price;
 
         int256 priceDiff = latestPrice > twap
@@ -54,7 +55,7 @@ contract TwapOracleTrap is ITrap {
         if (
             (uint256(priceDiff) * 10000) / uint256(twap) > DEVIATION_THRESHOLD
         ) {
-            return (true, abi.encode(latestPrice, twap));
+            return (true, abi.encode(uint256(latestPrice), uint256(twap)));
         }
 
         return (false, "");
