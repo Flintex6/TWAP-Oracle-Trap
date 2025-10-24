@@ -35,24 +35,29 @@ contract TwapOracleTrap is ITrap {
 
         CollectOutput memory latestOutput = abi.decode(data[0], (CollectOutput));
 
-        if (latestOutput.price <= 0) {
+        if (
+            latestOutput.timestamp == 0 ||
+            latestOutput.collectedAt < latestOutput.timestamp
+        ) {
             return (false, "");
         }
-        
         if (latestOutput.collectedAt - latestOutput.timestamp > STALENESS_THRESHOLD) {
+            return (false, "");
+        }
+        if (latestOutput.price <= 0) {
             return (false, "");
         }
 
         int256 totalPrice = 0;
         uint256 validSamples = 0;
         for (uint256 i = 0; i < data.length; i++) {
-            if (data[i].length > 0) {
-                CollectOutput memory output = abi.decode(data[i], (CollectOutput));
-                if (output.collectedAt - output.timestamp <= STALENESS_THRESHOLD) {
-                    totalPrice += output.price;
-                    validSamples++;
-                }
-            }
+            if (data[i].length == 0) continue;
+            CollectOutput memory o = abi.decode(data[i], (CollectOutput));
+            if (o.timestamp == 0 || o.collectedAt < o.timestamp) continue;
+            if (o.collectedAt - o.timestamp > STALENESS_THRESHOLD) continue;
+            if (o.price <= 0) continue;
+            totalPrice += o.price;
+            validSamples++;
         }
 
         if (validSamples < 2) {

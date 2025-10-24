@@ -28,6 +28,7 @@ The `priceDeviation` function in `TwapResponse.sol` currently just emits an even
 
 The `TwapOracleTrap.sol` contract includes several security enhancements to ensure its robustness and reliability:
 
+*   **Underflow/Overflow Protection**: The contract now includes checks to prevent underflow/overflow issues when calculating the age of a price feed sample. It verifies that `collectedAt` is greater than or equal to `timestamp` before subtracting them. This prevents reverts in `shouldRespond` during planning/execution.
 *   **Empty-Blob Guards**: The `shouldRespond` function checks for empty or incomplete data arrays to prevent reverts when decoding data.
 *   **Positive Price Checks**: The contract verifies that the latest price and the TWAP are positive before performing any calculations or casting to unsigned integers. This prevents potential vulnerabilities from negative price values.
 *   **Staleness Checks**: The TWAP calculation now includes a staleness check for each data point, not just the latest one. This ensures that the TWAP is not skewed by old, irrelevant data.
