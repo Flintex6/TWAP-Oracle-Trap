@@ -29,23 +29,41 @@ contract TwapOracleTrap is ITrap {
     function shouldRespond(
         bytes[] calldata data
     ) external pure override returns (bool, bytes memory) {
-        if (data.length < 2) {
+        if (data.length < 2 || data[0].length == 0 || data[1].length == 0) {
             return (false, "");
         }
 
         CollectOutput memory latestOutput = abi.decode(data[0], (CollectOutput));
+
+        if (latestOutput.price <= 0) {
+            return (false, "");
+        }
         
         if (latestOutput.collectedAt - latestOutput.timestamp > STALENESS_THRESHOLD) {
             return (false, "");
         }
 
         int256 totalPrice = 0;
+        uint256 validSamples = 0;
         for (uint256 i = 0; i < data.length; i++) {
-            CollectOutput memory output = abi.decode(data[i], (CollectOutput));
-            totalPrice += output.price;
+            if (data[i].length > 0) {
+                CollectOutput memory output = abi.decode(data[i], (CollectOutput));
+                if (output.collectedAt - output.timestamp <= STALENESS_THRESHOLD) {
+                    totalPrice += output.price;
+                    validSamples++;
+                }
+            }
         }
 
-        int256 twap = totalPrice / int256(data.length);
+        if (validSamples < 2) {
+            return (false, "");
+        }
+
+        int256 twap = totalPrice / int256(validSamples);
+        if (twap <= 0) {
+            return (false, "");
+        }
+        
         int256 latestPrice = latestOutput.price;
 
         int256 priceDiff = latestPrice > twap
